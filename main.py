@@ -36,6 +36,7 @@ class Frame(wx.Frame):
         vboxTop.AddStretchSpacer()
 
         self.field = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
+        self.field.Bind(wx.EVT_CHAR_HOOK, self.OnCharHook)
 
         vboxMain.Add(vboxTop, 0, wx.EXPAND)
         vboxMain.Add(self.field, 1, wx.EXPAND | wx.ALL, self.FromDIP(5))
@@ -46,6 +47,14 @@ class Frame(wx.Frame):
         self.Show()
 
     #Functions/Logic
+    def OnCharHook(self, event):
+        if event.GetKeyCode() == wx.WXK_TAB:
+            frm, to = self.field.GetSelection()
+            self.field.Replace(frm, to, "    ")
+            self.field.SetInsertionPoint(frm + 4)
+            return
+        event.Skip()
+
     def OnSave(self, event):
         with wx.FileDialog(
             self,
