@@ -47,7 +47,7 @@ class Frame(wx.Frame):
         self.Show()
 
     #Functions/Logic
-    def OnCharHook(self, event):
+    def OnCharHook(self, event):#Tab
         if event.GetKeyCode() == wx.WXK_TAB:
             frm, to = self.field.GetSelection()
             self.field.Replace(frm, to, "    ")
