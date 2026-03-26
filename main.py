@@ -14,6 +14,7 @@ class App(tk.Tk):
         super().__init__()
         self.title("pNotes")
         self.geometry("800x600")
+        self.current_path = None
 
         self._build_menu()
         self._build_ui()
@@ -32,6 +33,7 @@ class App(tk.Tk):
         top_frame = tk.Frame(self)
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
+        tk.Button(top_frame, text="Save as", command=self.on_save_as).pack(side=tk.LEFT, padx=5, pady=5)
         tk.Button(top_frame, text="Save", command=self.on_save).pack(side=tk.LEFT, padx=5, pady=5)
         tk.Button(top_frame, text="Open", command=self.on_open).pack(side=tk.LEFT, padx=5, pady=5)
 
@@ -50,7 +52,7 @@ class App(tk.Tk):
             self.field.insert(tk.INSERT, "    ")
         return "break"
 
-    def on_save(self):
+    def on_save_as(self):
         path = filedialog.asksaveasfilename(
             title="Save file",
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
@@ -61,9 +63,20 @@ class App(tk.Tk):
         try:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.field.get("1.0", tk.END))
+            self.current_path = path  # запоминаем путь
             messagebox.showinfo("Saving", "File saved successfully")
         except IOError:
             messagebox.showerror("Error", f"Could not save file: {path}")
+
+    def on_save(self):
+        if self.current_path:
+            try:
+                with open(f"{self.current_path}", "w", encoding="utf-8") as f:
+                    f.write(self.field.get("1.0", tk.END))
+            except IOError:
+                messagebox.showerror("Error", f"Could not save file: {self.current_path}")
+        else:
+            self.on_save_as()
 
     def on_open(self):
         path = filedialog.askopenfilename(
@@ -76,6 +89,7 @@ class App(tk.Tk):
             with open(path, "r", encoding="utf-8") as f:
                 self.field.delete("1.0", tk.END)
                 self.field.insert("1.0", f.read())
+                self.current_path = path
         except IOError:
             messagebox.showerror("Error", f"Could not open file: {path}")
 
