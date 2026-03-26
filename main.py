@@ -5,103 +5,82 @@
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
-import wx
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
-class Frame(wx.Frame):
+
+class App(tk.Tk):
     def __init__(self):
-        super().__init__(None, title="pNotes")
-        self.SetClientSize(self.FromDIP((800, 600)))
+        super().__init__()
+        self.title("pNotes")
+        self.geometry("800x600")
 
-        panel = wx.Panel(self)
+        self._build_menu()
+        self._build_ui()
 
-        menubar = wx.MenuBar()
-        menuHelp = wx.Menu()
-        itemAbout = menuHelp.Append(wx.ID_ABOUT, "&About")
-        menubar.Append(menuHelp, "&Help")
-        self.SetMenuBar(menubar)
+        self.mainloop()
 
-        self.Bind(wx.EVT_MENU, self.OnAbout, itemAbout)
+    #UI
+    def _build_menu(self):
+        menubar = tk.Menu(self)
+        menu_help = tk.Menu(menubar, tearoff=0)
+        menu_help.add_command(label="About", command=self.on_about)
+        menubar.add_cascade(label="Help", menu=menu_help)
+        self.config(menu=menubar)
 
-        vboxMain = wx.BoxSizer(wx.VERTICAL)
-        vboxTop = wx.BoxSizer(wx.HORIZONTAL)
+    def _build_ui(self):
+        top_frame = tk.Frame(self)
+        top_frame.pack(side=tk.TOP, fill=tk.X)
 
-        self.save_button = wx.Button(panel, label="Save")
-        self.open_button = wx.Button(panel, label="Open")
+        tk.Button(top_frame, text="Save", command=self.on_save).pack(side=tk.LEFT, padx=5, pady=5)
+        tk.Button(top_frame, text="Open", command=self.on_open).pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.save_button.Bind(wx.EVT_BUTTON, self.OnSave)
-        self.open_button.Bind(wx.EVT_BUTTON, self.OnOpen)
-
-        vboxTop.Add(self.save_button, 0, wx.ALL, self.FromDIP(5))
-        vboxTop.Add(self.open_button, 0, wx.ALL, self.FromDIP(5))
-        vboxTop.AddStretchSpacer()
-
-        self.field = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
-        self.field.Bind(wx.EVT_CHAR_HOOK, self.OnCharHook)
-
-        vboxMain.Add(vboxTop, 0, wx.EXPAND)
-        vboxMain.Add(self.field, 1, wx.EXPAND | wx.ALL, self.FromDIP(5))
-
-        panel.SetSizer(vboxMain)
-
-        self.Centre()
-        self.Show()
+        self.field = tk.Text(self, wrap=tk.NONE, undo=True)
+        self.field.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.field.bind("<Tab>", self.on_tab)
 
     #Functions/Logic
-    def OnCharHook(self, event):#Tab
-        if event.GetKeyCode() == wx.WXK_TAB:
-            frm, to = self.field.GetSelection()
-            self.field.Replace(frm, to, "    ")
-            self.field.SetInsertionPoint(frm + 4)
-            return
-        event.Skip()
+    def on_tab(self, event):
+        try:
+            sel_start = self.field.index(tk.SEL_FIRST)
+            sel_end   = self.field.index(tk.SEL_LAST)
+            self.field.delete(sel_start, sel_end)
+            self.field.insert(sel_start, "    ")
+        except tk.TclError:
+            self.field.insert(tk.INSERT, "    ")
+        return "break"
 
-    def OnSave(self, event):
-        with wx.FileDialog(
-            self,
-            "Save file",
-            wildcard="Text files (*.txt)|*.txt|All files (*.*)|*.*",
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-        ) as fileDialog:
-            if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return
-
-            path = fileDialog.GetPath()
-
-            try:
-                with open(path, "w") as file:
-                    file.write(self.field.GetValue())
-                    wx.MessageBox("File saved successfully", "Saving", wx.OK | wx.ICON_INFORMATION)
-            except IOError:
-                wx.LogError(f"Could not save file: {path}")
-                    
-
-    def OnOpen(self, event):
-        with wx.FileDialog(
-            self,
-            "Open file",
-                wildcard="Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
-        ) as fileDialog:
-            if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return
-            path = fileDialog.GetPath()
-            try:
-                with open(path, "r") as file:
-                    self.field.SetValue(file.read())
-            except IOError:
-                wx.LogError(f"Could not open file: {path}")
-
-    def OnAbout(self, event):
-        wx.MessageBox(
-            "pNotes\nwxPython",
-            "About",
-            wx.OK | wx.ICON_INFORMATION
+    def on_save(self):
+        path = filedialog.asksaveasfilename(
+            title="Save file",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+            defaultextension=".txt"
         )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.field.get("1.0", tk.END))
+            messagebox.showinfo("Saving", "File saved successfully")
+        except IOError:
+            messagebox.showerror("Error", f"Could not save file: {path}")
 
-class App(wx.App):
-    def OnInit(self):
-        Frame()
-        return True
+    def on_open(self):
+        path = filedialog.askopenfilename(
+            title="Open file",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                self.field.delete("1.0", tk.END)
+                self.field.insert("1.0", f.read())
+        except IOError:
+            messagebox.showerror("Error", f"Could not open file: {path}")
 
-app = App()
-app.MainLoop()
+    def on_about(self):
+        messagebox.showinfo("About", "pNotes\nTkinter")
+
+
+App()
