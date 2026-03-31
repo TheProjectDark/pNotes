@@ -18,10 +18,9 @@ class App(tk.Tk):
 
         self._build_menu()
         self._build_ui()
+        # mainloop is NOT called here — called at the bottom instead
 
-        self.mainloop()
-
-    #UI
+    # UI
     def _build_menu(self):
         menubar = tk.Menu(self)
         menu_help = tk.Menu(menubar, tearoff=0)
@@ -34,14 +33,20 @@ class App(tk.Tk):
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
         tk.Button(top_frame, text="Save as", command=self.on_save_as).pack(side=tk.LEFT, padx=5, pady=5)
-        tk.Button(top_frame, text="Save", command=self.on_save).pack(side=tk.LEFT, padx=5, pady=5)
-        tk.Button(top_frame, text="Open", command=self.on_open).pack(side=tk.LEFT, padx=5, pady=5)
+        tk.Button(top_frame, text="Save",    command=self.on_save).pack(side=tk.LEFT, padx=5, pady=5)
+        tk.Button(top_frame, text="Open",    command=self.on_open).pack(side=tk.LEFT, padx=5, pady=5)
 
         self.field = tk.Text(self, wrap=tk.NONE, undo=True)
         self.field.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.field.bind("<Tab>", self.on_tab)
 
-    #Functions/Logic
+    def _update_title(self, path=None):
+        if path:
+            self.title(f"pNotes — {path}")
+        else:
+            self.title("pNotes")
+
+    # Functions / Logic
     def on_tab(self, event):
         try:
             sel_start = self.field.index(tk.SEL_FIRST)
@@ -51,6 +56,10 @@ class App(tk.Tk):
         except tk.TclError:
             self.field.insert(tk.INSERT, "    ")
         return "break"
+
+    def _get_text(self):
+        """Return editor contents without the phantom trailing newline tk.Text adds."""
+        return self.field.get("1.0", tk.END)[:-1]
 
     def on_save_as(self):
         path = filedialog.asksaveasfilename(
@@ -62,8 +71,9 @@ class App(tk.Tk):
             return
         try:
             with open(path, "w", encoding="utf-8") as f:
-                f.write(self.field.get("1.0", tk.END))
-            self.current_path = path  # запоминаем путь
+                f.write(self._get_text())
+            self.current_path = path
+            self._update_title(path)
             messagebox.showinfo("Saving", "File saved successfully")
         except IOError:
             messagebox.showerror("Error", f"Could not save file: {path}")
@@ -71,8 +81,8 @@ class App(tk.Tk):
     def on_save(self):
         if self.current_path:
             try:
-                with open(f"{self.current_path}", "w", encoding="utf-8") as f:
-                    f.write(self.field.get("1.0", tk.END))
+                with open(self.current_path, "w", encoding="utf-8") as f:  # no pointless f-string
+                    f.write(self._get_text())
             except IOError:
                 messagebox.showerror("Error", f"Could not save file: {self.current_path}")
         else:
@@ -89,12 +99,18 @@ class App(tk.Tk):
             with open(path, "r", encoding="utf-8") as f:
                 self.field.delete("1.0", tk.END)
                 self.field.insert("1.0", f.read())
-                self.current_path = path
+            self.current_path = path
+            self._update_title(path)
         except IOError:
             messagebox.showerror("Error", f"Could not open file: {path}")
 
     def on_about(self):
-        messagebox.showinfo("About", "pNotes\nTkinter")
+        messagebox.showinfo(
+            "About",
+            "pNotes\n"
+            "Simple text editor written in Python with Tkinter\n"
+        )
 
 
-App()
+app = App()
+app.mainloop()
